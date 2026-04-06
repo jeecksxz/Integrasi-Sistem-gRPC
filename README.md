@@ -73,8 +73,6 @@ Ini adalah skenario untuk menunjukkan **Bi-directional Streaming** dan **Global 
    * Andi akan keluar dari antrean dan kembali ke Menu Utama.
 4. **Lihat Terminal Budi:** Secara ajaib (real-time), status Budi akan berubah otomatis menjadi:
    `POSISI: 1 | GILIRAN ANDA!`
-5. **Kesimpulan:** Dosen akan melihat bahwa server kamu secara cerdas mengelola urutan orang yang sedang aktif antre.
-
 ---
 
 ### **Langkah 6: Simulasi Error Handling**
@@ -89,10 +87,10 @@ Ini adalah skenario untuk menunjukkan **Bi-directional Streaming** dan **Global 
 *   **Error "undefined":** Pastikan kamu sudah menjalankan perintah `protoc` di Langkah 2 dengan benar.
 *   **Port 50051 Busy:** Itu artinya ada server lama yang masih nyala. Tekan `CTRL+C` di terminal server lama atau restart VS Code.
 
-**Tutorial ini sudah sangat lengkap untuk kamu ikuti saat rekaman video nanti. Selamat mencoba!**
+---
 
 # Penjelasan Fitur
-### 1. Fitur Utama (Sisi Fungsional)
+### 1. Fitur Utama 
 
 *   **Live Stock Monitoring (Catalog Service):**
     *   **Deskripsi:** User bisa melihat sisa kuota tiket yang terus berkurang secara otomatis di layar tanpa perlu melakukan *refresh*.
@@ -106,7 +104,7 @@ Ini adalah skenario untuk menunjukkan **Bi-directional Streaming** dan **Global 
 
 ---
 
-### 2. Pemenuhan Syarat Tugas (Sisi Teknis gRPC)
+### 2. Teknis gRPC
 
 Ini adalah bagian yang paling dicari dosen. Kamu harus tunjukkan bahwa kodenya sudah memenuhi **6 Fitur Wajib**:
 
@@ -126,20 +124,3 @@ Ini adalah bagian yang paling dicari dosen. Kamu harus tunjukkan bahwa kodenya s
     *   Sistem mendukung banyak terminal client sekaligus. Perubahan stok yang dilakukan Client A akan langsung terlihat di layar Client B secara real-time.
 
 ---
-
-### 3. Keunggulan Proyek Kamu (Nilai Plus Kreativitas)
-
-Sampaikan poin ini agar nilaimu semakin tinggi:
-*   **Graceful Exit:** Client bisa keluar dari antrean dengan menekan tombol **ENTER** (menggunakan *Context Cancellation*), sehingga posisi antrean user lain di bawahnya langsung naik secara otomatis. Ini menunjukkan pemahaman mendalam tentang *Goroutine* di Golang.
-*   **Reactive Update:** Tidak menggunakan *polling* (request berulang-ulang), tapi menggunakan *streaming* murni sehingga sangat hemat kuota data dan latensi sangat rendah.
-
----
-
-### Saran untuk Presentasi Video (5 Menit):
-1.  **Menit 1:** Judul (Flash-Ticket) & Kenalkan 3 Service-nya.
-2.  **Menit 2:** Tunjukkan File `.proto` (Sebutkan mana yang Unary, mana yang Streaming).
-3.  **Menit 3:** Demo Multi-Client (Jalankan 2 Client bersamaan, tunjukkan stok berkurang di kedua layar).
-4.  **Menit 4:** Demo Antrean Global (Tunjukkan Budi naik posisi saat Andi keluar antrean).
-5.  **Menit 5:** Tunjukkan Error Handling (Beli tiket 500 buah saat stok cuma 100).
-
-**Semua sudah lengkap! Sekarang kamu tinggal rekam videonya. Semangat, proyek kamu sudah kategori "High-End" untuk tugas ini!** Ada lagi yang mau ditanyakan?
