@@ -122,6 +122,63 @@ Ini adalah bagian yang paling dicari dosen. Kamu harus tunjukkan bahwa kodenya s
     *   Dilengkapi dengan **`sync.Mutex`** (Locking) agar data tidak rusak saat diakses oleh ribuan orang secara bersamaan (*Thread-safe*).
 6.  **Multi-Client (TERPENUHI):**
     *   Sistem mendukung banyak terminal client sekaligus. Perubahan stok yang dilakukan Client A akan langsung terlihat di layar Client B secara real-time.
+  
+Dalam sistem **Flash-Ticket** yang kita bangun, fitur yang menggunakan **Unary gRPC** (Request-Response) adalah fitur **Booking Tiket (Pemesanan Tiket)**.
+
+Berikut adalah penjelasan detailnya untuk bahan presentasi atau videomu:
+
+---
+
+### 1. Nama Fitur: **Instant Booking (Reservasi Tiket)**
+Ini adalah fitur utama di mana pengguna melakukan aksi "Klik Beli" untuk mengamankan tiket mereka.
+
+*   **Cara Kerja Unary:** 
+    Sama seperti protokol HTTP biasa (Request-Response), Client mengirimkan **satu** permintaan, dan Server memberikan **satu** jawaban.
+    *   **Client Mengirim:** Data berupa `UserId`, `EventId` (Nama Konser), dan `Quantity` (Jumlah Tiket).
+    *   **Server Membalas:** Pesan sukses/gagal, serta `BookingID` unik jika berhasil.
+
+*   **Kenapa Harus Unary?**
+    Karena transaksi pembelian bersifat **final dan atomik**. Kamu tidak butuh aliran data terus-menerus untuk satu kali aksi "Beli". User hanya butuh kepastian: *"Apakah saya dapat tiketnya atau tidak?"* di detik itu juga.
+
+---
+
+### 2. Fitur Pendukung: **Validasi & Error Handling**
+Masih di dalam fungsi `BookTicket`, Unary gRPC digunakan untuk memberikan respon error yang instan jika terjadi kesalahan.
+
+*   **Skenario:**
+    *   Jika User memasukkan jumlah tiket **negatif (-1)** atau **nol (0)**.
+    *   Jika User meminta tiket lebih banyak dari sisa stok (misal: minta 500, stok sisa 90).
+*   **Respon gRPC Unary:**
+    Server akan langsung memutus permintaan dan mengirimkan status error (seperti `InvalidArgument` atau `ResourceExhausted`).
+*   **Kenapa Penting?**
+    Agar sistem tidak membuang-buang sumber daya (bandwidth) untuk memproses permintaan yang sudah pasti salah sejak awal.
+
+---
+
+### 3. Peran Unary dalam "State Management"
+Unary gRPC di fitur ini adalah **pemicu (trigger)** perubahan data di memori server.
+
+*   **Prosesnya:**
+    1. Client melakukan panggilan Unary `BookTicket`.
+    2. Server menerima, lalu melakukan **Locking (Mutex)** pada In-memory State.
+    3. Stok dikurangi.
+    4. Server membalas (Response) ke Client bahwa stok berhasil dikurangi.
+    5. Setelah Unary ini sukses, barulah fitur **Server-streaming** (Menu 1) mendeteksi perubahan dan mengirimkan angka stok baru ke semua user lain.
+
+---
+
+Agar dosenmu mudah paham, gunakan analogi ini:
+
+| Tipe gRPC | Fitur di Projek | Analogi Dunia Nyata |
+| :--- | :--- | :--- |
+| **Unary** | **Beli Tiket (BookTicket)** | Kamu memesan 1 burger di kasir dan langsung mendapat struk bukti bayar. |
+| **Server-Streaming** | **Pantau Stok (WatchStock)** | Kamu melihat papan menu digital yang harganya terus berubah otomatis. |
+| **Bi-directional** | **Antrean (JoinQueue)** | Kamu ngobrol bolak-balik dengan satpam di pintu masuk tentang posisi antreanmu. |
+
+---
+
+### Ringkasan Fitur Unary untuk di Video:
+> *"Fitur **Unary gRPC** kami implementasikan pada **Booking Service**. Fungsinya adalah untuk menangani transaksi pemesanan tiket secara cepat dan aman. Ketika user menekan tombol beli, client mengirimkan satu request ke server, dan server akan melakukan validasi stok di memori secara atomik, lalu mengirimkan satu response balik berupa status keberhasilan dan ID booking. Di sini kami juga menerapkan **Error Handling** untuk mencegah input yang tidak valid."*
 
 ---
 
@@ -158,8 +215,6 @@ Sebagai perbandingan, fitur **Beli Tiket** (`BookTicket`) menggunakan **Unary gR
 *   **Alasan:** Transaksi bersifat final dan tidak butuh *update* terus-menerus, jadi cukup pakai satu kali *Request-Response*.
 
 ---
-
-### Ringkasan untuk Bahan Presentasi (Slide):
 
 | Jenis Streaming | Fitur | Fungsi Utama |
 | :--- | :--- | :--- |
