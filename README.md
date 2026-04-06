@@ -1,4 +1,11 @@
-# Cara Jalanin Kodenya
+# Project_2_Big-Data_Kelompok6
+
+| Nama          | NRP          |
+| ------------- | ------------ |
+| Syela Zeruya Tandi Lalong | 5027231076 |
+| Nayyara Ashila | 5027231083 |
+
+## Cara Menjalankan Kode
 Ini adalah **Tutorial Lengkap Panduan Menjalankan Projek Flash-Ticket** dari awal sampai demo. Ikuti langkah-langkah ini secara urut agar tidak ada error "package not found" atau "undefined".
 
 ### **Langkah 1: Generate Kontrak gRPC**
