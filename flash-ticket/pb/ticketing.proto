@@ -3,17 +3,14 @@ syntax = "proto3";
 package ticketing;
 option go_package = "./pb";
 
-// SERVICE 1: Untuk melihat stok (Server-side Streaming)
 service CatalogService {
   rpc WatchLiveStock(EventRequest) returns (stream StockUpdate);
 }
 
-// SERVICE 2: Untuk memesan tiket (Unary)
 service BookingService {
   rpc BookTicket(BookingRequest) returns (BookingResponse);
 }
 
-// SERVICE 3: Untuk antrean pembayaran (Bi-directional Streaming)
 service QueueService {
   rpc JoinPaymentQueue(stream QueueStatus) returns (stream QueueUpdate);
 }

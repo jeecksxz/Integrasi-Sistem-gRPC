@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"sync"
@@ -16,38 +15,48 @@ import (
 )
 
 type SharedState struct {
-	mu    sync.Mutex
-	stock map[string]int32
+	mu         sync.Mutex
+	stock      map[string]int32
+	queueUsers []string // Daftar ID user yang sedang antre secara global
 }
 
-// Implementasi 3 Services
-type catalogServer struct { pb.UnimplementedCatalogServiceServer; state *SharedState }
-type bookingServer struct { pb.UnimplementedBookingServiceServer; state *SharedState }
-type queueServer   struct { pb.UnimplementedQueueServiceServer; state *SharedState }
+type catalogServer struct {
+	pb.UnimplementedCatalogServiceServer
+	state *SharedState
+}
+type bookingServer struct {
+	pb.UnimplementedBookingServiceServer
+	state *SharedState
+}
+type queueServer struct {
+	pb.UnimplementedQueueServiceServer
+	state *SharedState
+}
 
-// SERVICE 1: Catalog - WatchLiveStock (Server-side Streaming)
+// 1. Catalog Service - Server Streaming
 func (s *catalogServer) WatchLiveStock(req *pb.EventRequest, stream pb.CatalogService_WatchLiveStockServer) error {
-	log.Printf("[CATALOG] User memantau stok event: %s", req.EventId)
 	for {
 		s.state.mu.Lock()
-		currentStock := s.state.stock[req.EventId]
+		val := s.state.stock[req.EventId]
 		s.state.mu.Unlock()
 
-		err := stream.Send(&pb.StockUpdate{RemainingStock: currentStock, Status: "LIVE"})
-		if err != nil { return err }
-
-		if currentStock <= 0 { break }
+		err := stream.Send(&pb.StockUpdate{RemainingStock: val, Status: "LIVE"})
+		if err != nil {
+			return err
+		}
+		if val <= 0 {
+			break
+		}
 		time.Sleep(2 * time.Second)
 	}
 	return nil
 }
 
-// SERVICE 2: Booking - BookTicket (Unary)
+// 2. Booking Service - Unary
 func (s *bookingServer) BookTicket(ctx context.Context, req *pb.BookingRequest) (*pb.BookingResponse, error) {
 	s.state.mu.Lock()
 	defer s.state.mu.Unlock()
 
-	// Error Handling
 	if req.Quantity <= 0 {
 		return nil, status.Error(codes.InvalidArgument, "Jumlah harus > 0")
 	}
@@ -55,51 +64,93 @@ func (s *bookingServer) BookTicket(ctx context.Context, req *pb.BookingRequest) 
 		return nil, status.Error(codes.ResourceExhausted, "Tiket habis!")
 	}
 
-	// Update State
 	s.state.stock[req.EventId] -= req.Quantity
-	log.Printf("[BOOKING] User %s beli %d tiket. Sisa: %d", req.UserId, req.Quantity, s.state.stock[req.EventId])
+	log.Printf("[BOOKING] %s memesan %d tiket. Sisa: %d", req.UserId, req.Quantity, s.state.stock[req.EventId])
 
 	return &pb.BookingResponse{
-		Success: true,
-		Message: "Booking Berhasil!",
+		Success:   true,
+		Message:   "Berhasil mengamankan tiket!",
 		BookingId: fmt.Sprintf("BK-%d", time.Now().Unix()),
 	}, nil
 }
 
-// SERVICE 3: Queue - JoinPaymentQueue (Bi-directional Streaming)
+// 3. Queue Service - Bi-directional Streaming (Real Global Queue)
 func (s *queueServer) JoinPaymentQueue(stream pb.QueueService_JoinPaymentQueueServer) error {
-	posisi := 5
-	for {
-		_, err := stream.Recv()
-		if err == io.EOF { return nil }
-		if err != nil { return err }
-
-		err = stream.Send(&pb.QueueUpdate{
-			Position: int32(posisi), 
-			Message: "Menunggu pembayaran...",
-		})
-		if err != nil { return err }
-
-		if posisi > 1 { posisi-- }
-		time.Sleep(2 * time.Second)
+	req, err := stream.Recv()
+	if err != nil {
+		return err
 	}
+	currentID := req.BookingId
+
+	// Tambahkan ke antrean global
+	s.state.mu.Lock()
+	s.state.queueUsers = append(s.state.queueUsers, currentID)
+	log.Printf("[QUEUE] %s masuk antrean. Total: %d", currentID, len(s.state.queueUsers))
+	s.state.mu.Unlock()
+
+	// Loop untuk update posisi
+	for {
+		select {
+		case <-stream.Context().Done(): // Jika client exit/cancel context
+			goto cleanup
+		default:
+			s.state.mu.Lock()
+			posisi := -1
+			for i, id := range s.state.queueUsers {
+				if id == currentID {
+					posisi = i + 1
+					break
+				}
+			}
+			total := len(s.state.queueUsers)
+			s.state.mu.Unlock()
+
+			if posisi == -1 {
+				goto cleanup
+			}
+
+			msg := fmt.Sprintf("Menunggu... (Antrean Aktif: %d)", total)
+			if posisi == 1 {
+				msg = "SILAKAN BAYAR SEKARANG!"
+			}
+
+			err := stream.Send(&pb.QueueUpdate{Position: int32(posisi), Message: msg})
+			if err != nil {
+				goto cleanup
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+cleanup:
+	s.state.mu.Lock()
+	for i, id := range s.state.queueUsers {
+		if id == currentID {
+			s.state.queueUsers = append(s.state.queueUsers[:i], s.state.queueUsers[i+1:]...)
+			break
+		}
+	}
+	log.Printf("[QUEUE] %s keluar antrean. Sisa: %d", currentID, len(s.state.queueUsers))
+	s.state.mu.Unlock()
+	return nil
 }
 
 func main() {
-	fmt.Println("=== FLASH-TICKET SERVER (3 SERVICES) ===")
 	lis, err := net.Listen("tcp", ":50051")
-	if err != nil { log.Fatal(err) }
-
-	state := &SharedState{stock: map[string]int32{"KONSER_ROCK": 100}}
-	grpcServer := grpc.NewServer()
-
-	// Registrasi 3 Services sekaligus
-	pb.RegisterCatalogServiceServer(grpcServer, &catalogServer{state: state})
-	pb.RegisterBookingServiceServer(grpcServer, &bookingServer{state: state})
-	pb.RegisterQueueServiceServer(grpcServer, &queueServer{state: state})
-
-	log.Println("Server running on port :50051")
-	if err := grpcServer.Serve(lis); err != nil {
+	if err != nil {
 		log.Fatal(err)
 	}
+
+	state := &SharedState{
+		stock:      map[string]int32{"KONSER_ROCK": 100},
+		queueUsers: []string{},
+	}
+
+	s := grpc.NewServer()
+	pb.RegisterCatalogServiceServer(s, &catalogServer{state: state})
+	pb.RegisterBookingServiceServer(s, &bookingServer{state: state})
+	pb.RegisterQueueServiceServer(s, &queueServer{state: state})
+
+	fmt.Println("=== FLASH-TICKET SERVER STARTED (PORT 50051) ===")
+	s.Serve(lis)
 }

@@ -25,8 +25,6 @@ const (
 // CatalogServiceClient is the client API for CatalogService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// SERVICE 1: Untuk melihat stok (Server-side Streaming)
 type CatalogServiceClient interface {
 	WatchLiveStock(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StockUpdate], error)
 }
@@ -61,8 +59,6 @@ type CatalogService_WatchLiveStockClient = grpc.ServerStreamingClient[StockUpdat
 // CatalogServiceServer is the server API for CatalogService service.
 // All implementations must embed UnimplementedCatalogServiceServer
 // for forward compatibility.
-//
-// SERVICE 1: Untuk melihat stok (Server-side Streaming)
 type CatalogServiceServer interface {
 	WatchLiveStock(*EventRequest, grpc.ServerStreamingServer[StockUpdate]) error
 	mustEmbedUnimplementedCatalogServiceServer()
@@ -134,8 +130,6 @@ const (
 // BookingServiceClient is the client API for BookingService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// SERVICE 2: Untuk memesan tiket (Unary)
 type BookingServiceClient interface {
 	BookTicket(ctx context.Context, in *BookingRequest, opts ...grpc.CallOption) (*BookingResponse, error)
 }
@@ -161,8 +155,6 @@ func (c *bookingServiceClient) BookTicket(ctx context.Context, in *BookingReques
 // BookingServiceServer is the server API for BookingService service.
 // All implementations must embed UnimplementedBookingServiceServer
 // for forward compatibility.
-//
-// SERVICE 2: Untuk memesan tiket (Unary)
 type BookingServiceServer interface {
 	BookTicket(context.Context, *BookingRequest) (*BookingResponse, error)
 	mustEmbedUnimplementedBookingServiceServer()
@@ -240,8 +232,6 @@ const (
 // QueueServiceClient is the client API for QueueService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// SERVICE 3: Untuk antrean pembayaran (Bi-directional Streaming)
 type QueueServiceClient interface {
 	JoinPaymentQueue(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[QueueStatus, QueueUpdate], error)
 }
@@ -270,8 +260,6 @@ type QueueService_JoinPaymentQueueClient = grpc.BidiStreamingClient[QueueStatus,
 // QueueServiceServer is the server API for QueueService service.
 // All implementations must embed UnimplementedQueueServiceServer
 // for forward compatibility.
-//
-// SERVICE 3: Untuk antrean pembayaran (Bi-directional Streaming)
 type QueueServiceServer interface {
 	JoinPaymentQueue(grpc.BidiStreamingServer[QueueStatus, QueueUpdate]) error
 	mustEmbedUnimplementedQueueServiceServer()
