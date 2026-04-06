@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package ticketing;
+option go_package = "./pb";
+
+// SERVICE 1: Untuk melihat stok (Server-side Streaming)
+service CatalogService {
+  rpc WatchLiveStock(EventRequest) returns (stream StockUpdate);
+}
+
+// SERVICE 2: Untuk memesan tiket (Unary)
+service BookingService {
+  rpc BookTicket(BookingRequest) returns (BookingResponse);
+}
+
+// SERVICE 3: Untuk antrean pembayaran (Bi-directional Streaming)
+service QueueService {
+  rpc JoinPaymentQueue(stream QueueStatus) returns (stream QueueUpdate);
+}
+
+message BookingRequest {
+  string user_id = 1;
+  string event_id = 2;
+  int32 quantity = 3;
+}
+
+message BookingResponse {
+  bool success = 1;
+  string message = 2;
+  string booking_id = 3;
+}
+
+message EventRequest {
+  string event_id = 1;
+}
+
+message StockUpdate {
+  int32 remaining_stock = 1;
+  string status = 2; 
+}
+
+message QueueStatus {
+  string booking_id = 1;
+  string status = 2; 
+}
+
+message QueueUpdate {
+  int32 position = 1;
+  string message = 2;
+  int32 timeout_seconds = 3;
+}
