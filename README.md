@@ -124,3 +124,45 @@ Ini adalah bagian yang paling dicari dosen. Kamu harus tunjukkan bahwa kodenya s
     *   Sistem mendukung banyak terminal client sekaligus. Perubahan stok yang dilakukan Client A akan langsung terlihat di layar Client B secara real-time.
 
 ---
+
+### 1. Server-side Streaming (Pesan dari Server ke Client)
+**Implementasi:** Fitur **Live Stock Monitoring** (`WatchLiveStock`).
+
+*   **Apa itu?** 
+    Model di mana Client mengirimkan **satu** permintaan (*Request*), dan Server membalas dengan **aliran data terus-menerus** (*Stream of Responses*) selama koneksi terbuka.
+*   **Fungsi dalam Fitur:**
+    Dalam fitur Pantau Stok, Client (User) hanya perlu mengeklik "Pantau Stok" sekali. Server kemudian akan mengirimkan update sisa tiket setiap kali ada perubahan atau setiap 2 detik. 
+*   **Mengapa Menggunakan Ini?**
+    Daripada Client harus melakukan *Refresh* atau *Polling* (bertanya berulang-ulang: "Masih ada tiket? Masih ada tiket?"), Server secara aktif "membisiki" Client data terbaru. Ini jauh lebih hemat kuota data dan beban kerja server jadi lebih ringan.
+
+---
+
+### 2. Bi-directional Streaming (Komunikasi Dua Arah)
+**Implementasi:** Fitur **Real-time Global Waiting Room** (`JoinPaymentQueue`).
+
+*   **Apa itu?** 
+    Jenis komunikasi yang paling kompleks, di mana Client dan Server bisa saling mengirimkan aliran data secara **bersamaan** dan **mandiri** dalam satu koneksi yang sama (*Full Duplex*).
+*   **Fungsi dalam Fitur:**
+    Dalam fitur Antrean Pembayaran, terjadi percakapan dua arah:
+    *   **Dari Client ke Server:** Client mengirimkan sinyal "Heartbeat" (Status: WAITING) untuk membuktikan bahwa user tersebut masih aktif berada di depan layar dan tidak *afk* atau *close* aplikasi.
+    *   **Dari Server ke Client:** Server membalas dengan posisi antrean terbaru secara dinamis (misal: "Posisi Anda: 3... sekarang 2... sekarang 1").
+*   **Mengapa Menggunakan Ini?**
+    Ini sangat krusial untuk fitur antrean. Jika Andi (Posisi 1) menutup aplikasinya, Server langsung mendeteksi koneksi Andi terputus, lalu Server secara otomatis mengirimkan update posisi terbaru ke Budi (Posisi 2) agar naik menjadi Posisi 1. Komunikasi dua arah ini membuat antrean jadi sangat responsif dan adil.
+
+---
+
+### Perbandingan dengan Unary (Sebagai Kontras)
+Sebagai perbandingan, fitur **Beli Tiket** (`BookTicket`) menggunakan **Unary gRPC**:
+*   **Fungsi:** Transaksi cepat sekali jalan.
+*   **Cara kerja:** Client kirim pesanan -> Server proses -> Selesai.
+*   **Alasan:** Transaksi bersifat final dan tidak butuh *update* terus-menerus, jadi cukup pakai satu kali *Request-Response*.
+
+---
+
+### Ringkasan untuk Bahan Presentasi (Slide):
+
+| Jenis Streaming | Fitur | Fungsi Utama |
+| :--- | :--- | :--- |
+| **Server-side Streaming** | Live Stock Update | Server mendorong (*Push*) data stok terbaru ke semua User secara otomatis tanpa perlu *Refresh*. |
+| **Bi-directional Streaming** | Global Waiting Room | Komunikasi dua arah untuk memantau kehadiran User dan meng-update posisi antrean secara adil dan *live*. |
+
